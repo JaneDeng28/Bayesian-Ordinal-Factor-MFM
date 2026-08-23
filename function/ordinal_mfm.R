@@ -102,7 +102,7 @@ validate_ordinal_matrix <- function(Y) {
 #' MFM prior; q specifies the latent factor dimension and is not a cluster count.
 #'
 #' @param Y Integer feature-by-cell ordinal matrix with entries in {1,...,5}.
-#' @param q Latent factor dimension (paper default: 10).
+#' @param q Latent factor dimension (paper default: 4).
 #' @param chains Number of independent MCMC chains (default: 4).
 #' @param n_iter Total iterations per chain (default: 2000).
 #' @param burn_in Iterations discarded at the start of each chain (default: 1000).
@@ -123,7 +123,7 @@ validate_ordinal_matrix <- function(Y) {
 #' @return An object of class ordinal_mfm_fit containing raw results for every
 #'   chain, input dimensions, and the settings/seeds used for the analysis.
 fit_ordinal_mfm <- function(
-    Y, q = 10L, chains = 4L, n_iter = 2000L, burn_in = 1000L, initial_clusters = 10L,
+    Y, q = 4L, chains = 4L, n_iter = 2000L, burn_in = 1000L, initial_clusters = 10L,
     sigma_B = 5, alpha_mfm = 1, max_clusters = 40L, kappa0 = 0.1,
     nu0_add = 2, lambda_pois = 9, S0_scale_mult = 1,
     K_sum_max = 200L, loglik_every = 1L, seed = NULL,
