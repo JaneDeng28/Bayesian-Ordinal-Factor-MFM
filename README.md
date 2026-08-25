@@ -1,49 +1,33 @@
 # Bayesian Ordinal Factor MFM Clustering
 
-This repository implements the method described in **“Bayesian Ordinal Factor
-Mixture of Finite Mixtures Modeling for Single-Cell DNA Methylation
-Clustering.”** It clusters cells from high-dimensional ordinal methylation data
-while learning the number of occupied clusters rather than requiring it as an
-input.
+This repository implements the method described in **“Bayesian Ordinal Factor Mixture of Finite Mixtures Modeling for Single-Cell DNA Methylation Clustering.”** It clusters cells from high-dimensional ordinal methylation data while learning the number of occupied clusters rather than requiring it as an input.
 
-The model combines an ordinal latent-factor representation with a mixture of
-finite mixtures (MFM) prior. The factor model reduces the dimension of the
-methylation features, and the MFM prior performs model-based clustering in the
-latent space. Posterior allocation samples from multiple MCMC chains are
-combined into a posterior similarity matrix, and Dahl's least-squares partition
-provides one representative clustering.
+The model combines an ordinal latent-factor representation with a mixture of finite mixtures (MFM) prior. The factor model reduces the dimension of the methylation features, and the MFM prior performs model-based clustering in the latent space. Posterior allocation samples from multiple MCMC chains are combined into a posterior similarity matrix, and Dahl's least-squares partition provides one representative clustering.
 
 ## Workflow
 
-1. Prepare a feature-by-cell ordinal methylation matrix with values 1–5, or
-   convert a complete methylation proportion matrix with
-   `methylation_to_ordinal()`.
-2. Fit the model with `fit_ordinal_mfm()`.
-3. Summarize the posterior clustering with `summarize_clustering()`.
-4. Inspect the representative labels, posterior cluster count, co-clustering
-   probabilities, and chain-specific diagnostics.
+1.  Prepare a feature-by-cell ordinal methylation matrix with values 1–5, or convert a complete methylation proportion matrix with `methylation_to_ordinal()`.
+2.  Fit the model with `fit_ordinal_mfm()`.
+3.  Summarize the posterior clustering with `summarize_clustering()`.
+4.  Inspect the representative labels, posterior cluster count, co-clustering probabilities, and chain-specific diagnostics.
 
 ## Installation
 
 Install the required R packages:
 
-```r
+``` r
 install.packages(c("Rcpp", "RcppArmadillo", "mclust"))
 ```
 
-A working C++ compiler for R is required. `Rcpp` and `RcppArmadillo` are needed
-to fit the model; `mclust` is used only to calculate the adjusted Rand index in
-the simulated-data example.
+A working C++ compiler for R is required. `Rcpp` and `RcppArmadillo` are needed to fit the model; `mclust` is used only to calculate the adjusted Rand index in the simulated-data example.
 
-Clone or download this repository, start R in the repository root, and load the
-user-facing functions:
+Clone or download this repository, start R in the repository root, and load the user-facing functions:
 
-```r
+``` r
 source("function/ordinal_mfm.R")
 ```
 
-The C++ sampler is compiled automatically on the first call to
-`fit_ordinal_mfm()`.
+The C++ sampler is compiled automatically on the first call to `fit_ordinal_mfm()`.
 
 ## Input data
 
@@ -51,17 +35,17 @@ The C++ sampler is compiled automatically on the first call to
 
 The main function accepts `Y`, a numeric or integer matrix with:
 
-| Property | Required format |
-|---|---|
-| Rows | Methylation features or genomic regions |
-| Columns | Cells |
-| Entries | Ordinal categories `1`, `2`, `3`, `4`, or `5` |
-| Missing values | Not allowed |
-| Minimum size | At least one feature and two cells |
+| Property       | Required format                               |
+|----------------|-----------------------------------------------|
+| Rows           | Methylation features or genomic regions       |
+| Columns        | Cells                                         |
+| Entries        | Ordinal categories `1`, `2`, `3`, `4`, or `5` |
+| Missing values | Not allowed                                   |
+| Minimum size   | At least one feature and two cells            |
 
 For example, an input with four features and three cells looks like this:
 
-```r
+``` r
 Y <- matrix(
   c(1, 2, 1,
     4, 5, 4,
@@ -83,32 +67,27 @@ Y
 # Feature_4      5      4      5
 ```
 
-Cell names are optional. The order of `result$cluster` follows the column order
-of `Y`.
+Cell names are optional. The order of `result$cluster` follows the column order of `Y`.
 
 ### Continuous methylation proportions
 
-If the starting data are a complete feature-by-cell methylation proportion
-matrix `W` in `[0, 1]`, convert it before fitting:
+If the starting data are a complete feature-by-cell methylation proportion matrix `W` in `[0, 1]`, convert it before fitting:
 
-```r
+``` r
 Y <- methylation_to_ordinal(W)
 ```
 
-The conversion uses the intervals `[0, 0.2]`, `(0.2, 0.4]`, `(0.4, 0.6]`,
-`(0.6, 0.8]`, and `(0.8, 1]`, mapped to categories 1–5. Equivalently, use the
-convenience wrapper:
+The conversion uses the intervals `[0, 0.2]`, `(0.2, 0.4]`, `(0.4, 0.6]`, `(0.6, 0.8]`, and `(0.8, 1]`, mapped to categories 1–5. Equivalently, use the convenience wrapper:
 
-```r
+``` r
 fit <- fit_methylation_mfm(W, seed = 123)
 ```
 
-Both `Y` and `W` must be complete: preprocessing and imputation must be
-performed before calling these functions.
+Both `Y` and `W` must be complete: preprocessing and imputation must be performed before calling these functions.
 
 ## Quick start
 
-```r
+``` r
 source("function/ordinal_mfm.R")
 
 example_data <- readRDS("data/example_data_n1000_p5000.rds")
@@ -123,14 +102,13 @@ result$posterior_mode_n_clusters
 result$posterior_mode_by_chain
 ```
 
-`true_label` is included in the simulated example for evaluation only. It is
-not supplied to the model.
+`true_label` is included in the simulated example for evaluation only. It is not supplied to the model.
 
 ## Main functions
 
 ### `fit_ordinal_mfm()`
 
-```r
+``` r
 fit <- fit_ordinal_mfm(
   Y,
   q = 10,
@@ -145,7 +123,7 @@ fit <- fit_ordinal_mfm(
 Important arguments are:
 
 | Argument | Description | Default |
-|---|---|---:|
+|----|----|---:|
 | `Y` | Feature-by-cell ordinal matrix with entries in `{1, ..., 5}` | required |
 | `q` | Latent factor dimension; this is **not** the number of clusters | `10` |
 | `chains` | Number of independent MCMC chains | `4` |
@@ -163,26 +141,23 @@ Important arguments are:
 The return value, `fit`, is an object of class `ordinal_mfm_fit`:
 
 | Component | Contents |
-|---|---|
+|----|----|
 | `fit$chains` | Raw posterior output for every MCMC chain |
 | `fit$input` | Number of features, number of cells, and factor dimension `q` |
 | `fit$settings` | MCMC settings, hyperparameters, and chain seeds |
 
-Chains are run sequentially to avoid multiplying peak memory use. When
-`seed = 123` and `chains = 4`, the chain seeds are 123, 124, 125, and 126.
+Chains are run sequentially to avoid multiplying peak memory use. When `seed = 123` and `chains = 4`, the chain seeds are 123, 124, 125, and 126.
 
 ### `summarize_clustering()`
 
-```r
+``` r
 result <- summarize_clustering(fit)
 ```
 
-This function combines all retained allocation draws, calculates the posterior
-similarity matrix, and selects Dahl's least-squares representative partition.
-It returns:
+This function combines all retained allocation draws, calculates the posterior similarity matrix, and selects Dahl's least-squares representative partition. It returns:
 
 | Component | Shape | Meaning |
-|---|---:|---|
+|----|---:|----|
 | `cluster` | `n_cells` | Dahl cluster label for each input cell |
 | `n_clusters` | 1 | Number of clusters in the Dahl partition |
 | `posterior_mode_n_clusters` | 1 | Most frequent occupied-cluster count across all retained draws |
@@ -193,30 +168,24 @@ It returns:
 | `dahl_loss` | total retained draws | Dahl loss for every candidate partition |
 | `selected_draw` | 1 | Index of the allocation draw selected by Dahl's criterion |
 
-The numeric cluster labels are identifiers only: label 1 is not intrinsically
-greater than label 2. For scientific interpretation, investigate the
-methylation profiles of the cells assigned to each cluster. Large differences
-in `posterior_mode_by_chain` or unstable cluster-count traces should be examined
-before interpreting the representative partition.
+The numeric cluster labels are identifiers only: label 1 is not intrinsically greater than label 2. For scientific interpretation, investigate the methylation profiles of the cells assigned to each cluster. Large differences in `posterior_mode_by_chain` or unstable cluster-count traces should be examined before interpreting the representative partition.
 
 ## Included example data and output
 
-`data/example_data_n1000_p5000.rds` follows the model-based balanced,
-strong-signal simulation setting used in the paper. It contains:
+`data/example_data_n1000_p5000.rds` follows the model-based balanced, strong-signal simulation setting used in the paper. It contains:
 
-| Object | Description |
-|---|---|
-| `Y` | `5000 × 1000` ordinal input matrix with values 1–5 |
-| `W` | Corresponding continuous methylation proportions in `[0, 1]` |
-| `true_label` | Five balanced simulated clusters of 200 cells each |
-| `metadata` | Complete data-generation settings |
+| Object       | Description                                                  |
+|--------------|--------------------------------------------------------------|
+| `Y`          | `5000 × 1000` ordinal input matrix with values 1–5           |
+| `W`          | Corresponding continuous methylation proportions in `[0, 1]` |
+| `true_label` | Five balanced simulated clusters of 200 cells each           |
+| `metadata`   | Complete data-generation settings                            |
 
-The simulation uses `s = 5`, `p_signal = 0.40`, `sigma_xi = 0.20`, anisotropy
-8, volume multipliers `(0.6, 0.8, 1.0, 1.4, 2.0)`, and generation seed 20009.
+The simulation uses `s = 5`, `p_signal = 0.40`, `sigma_xi = 0.20`, anisotropy 8, volume multipliers `(0.6, 0.8, 1.0, 1.4, 2.0)`, and generation seed 20009.
 
 The checked-in example run inferred five clusters:
 
-```text
+``` text
 metric                         value
 dahl_clusters                 5
 posterior_mode_clusters       5
@@ -227,32 +196,25 @@ chain_1  chain_2  chain_3  chain_4
       5        5        5        5
 ```
 
-The adjusted Rand index compares the estimated labels with the known simulated
-labels. It is available for this benchmark because `true_label` is known; it
-cannot generally be calculated for an unlabeled real dataset.
+The adjusted Rand index compares the estimated labels with the known simulated labels. It is available for this benchmark because `true_label` is known; it cannot generally be calculated for an unlabeled real dataset.
 
 ## Reproduce the complete example
 
 From a terminal in the repository root:
 
-```bash
+``` bash
 Rscript example/run_example.R
 ```
 
-This runs four full MCMC chains of 2,000 iterations each on 5,000 features and
-1,000 cells. It is a substantive analysis and may require considerable time and
-memory. Files are written only after a successful run:
+This runs four full MCMC chains of 2,000 iterations each on 5,000 features and 1,000 cells. It is a substantive analysis and may require considerable time and memory. Files are written only after a successful run:
 
-- `example/example_metrics.csv`: inferred cluster counts and adjusted Rand
-  index;
-- `example/example_cluster_assignments.csv`: cell IDs, simulated truth, and
-  estimated labels;
-- `example/example_results.rds`: all four raw chains and the combined
-  clustering summary.
+- `example/example_metrics.csv`: inferred cluster counts and adjusted Rand index;
+- `example/example_cluster_assignments.csv`: cell IDs, simulated truth, and estimated labels;
+- `example/example_results.rds`: all four raw chains and the combined clustering summary.
 
 ## Repository structure
 
-```text
+``` text
 function/
   ordinal_mfm.R       User-facing R functions
   mcmc.cpp            C++ MCMC implementation
