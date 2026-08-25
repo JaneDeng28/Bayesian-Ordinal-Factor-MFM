@@ -69,6 +69,8 @@ Y
 
 Cell names are optional. The order of `result$cluster` follows the column order of `Y`.
 
+The current implementation is written specifically for five ordinal levels. This is reflected in the R input validation, the five-category cutpoint vector, and the C++ sampler. Therefore, the number of ordinal levels is not currently a user-configurable argument: changing from five levels to another number would require corresponding code changes, not merely a different value of `q`.
+
 ### Continuous methylation proportions
 
 If the starting data are a complete feature-by-cell methylation proportion matrix `W` in `[0, 1]`, convert it before fitting:
@@ -125,7 +127,7 @@ Important arguments are:
 | Argument | Description | Default |
 |----|----|---:|
 | `Y` | Feature-by-cell ordinal matrix with entries in `{1, ..., 5}` | required |
-| `q` | Dimension of each cell's latent factor score; this is **not** the number of clusters | `4` |
+| `q` | Dimension of each cell's latent factor score; this is neither the number of ordinal levels nor the number of clusters | `4` |
 | `chains` | Number of independent MCMC chains | `4` |
 | `n_iter` | Total iterations per chain | `2000` |
 | `burn_in` | Initial iterations discarded from each chain | `1000` |
@@ -150,18 +152,11 @@ Chains are run sequentially to avoid multiplying peak memory use. When `seed = 1
 
 #### What `q` means in the R and C++ code
 
-In the manuscript, `q` is the dimension of the latent factor score
-`eta_j`. Accordingly, the loading matrix has dimensions `p × q`, each cell has
-a `q`-dimensional factor score, and the MFM clusters cells in this
-`q`-dimensional space. The main model-based simulation in the manuscript uses
-`q0 = 4`, and the current R interface therefore defaults to `q = 4`.
+In the manuscript, `q` is the dimension of the latent factor score `eta_j`. Accordingly, the loading matrix has dimensions `p × q`, each cell has a `q`-dimensional factor score, and the MFM clusters cells in this `q`-dimensional space. The current R interface defaults to `q = 4`, matching the latent dimension used to generate the included model-based example.
 
-The C++ sampler names this same argument `K`, which can be confused with the
-manuscript notation for the number of mixture components. In the implementation,
-however, the C++ argument `K` is used to set the number of columns of the factor
-loading matrix `B` and the number of rows of the factor-score matrix `eta`:
+The C++ sampler names this same argument `K`, which can be confused with the manuscript notation for the number of mixture components. In the implementation, however, the C++ argument `K` is used to set the number of columns of the factor loading matrix `B` and the number of rows of the factor-score matrix `eta`:
 
-```text
+``` text
 R interface:       q
 C++ sampler:       K        (the same latent factor dimension)
 Loading matrix:    B        p × q
@@ -170,11 +165,9 @@ Initial clusters:  K_init   initialization only
 Occupied clusters: n_clust  inferred by the MFM sampler
 ```
 
-Thus, changing `q` changes the dimension of the latent representation; it does
-not prescribe how many cell clusters the model must return. The argument
-`initial_clusters` is passed to C++ as `K_init` and affects only the starting
-partition. The posterior number of occupied clusters is learned by the MFM
-model and is summarized by `n_clusters` and `posterior_mode_n_clusters`.
+Thus, changing `q` changes the dimension of the latent representation; it does not prescribe how many cell clusters the model must return. The argument `initial_clusters` is passed to C++ as `K_init` and affects only the starting partition. The posterior number of occupied clusters is learned by the MFM model and is summarized by `n_clusters` and `posterior_mode_n_clusters`.
+
+The latent dimension `q` is also separate from the number of ordinal categories in `Y`. Five ordinal categories describe the measurement scale of each matrix entry, whereas `q` describes the dimension of each cell's latent coordinate. There is no general rule that a model with five ordinal levels must use `q = 4`.
 
 ### `summarize_clustering()`
 
@@ -209,12 +202,17 @@ The numeric cluster labels are identifiers only: label 1 is not intrinsically gr
 | `true_label` | Five balanced simulated clusters of 200 cells each           |
 | `metadata`   | Complete data-generation settings                            |
 
-The simulation uses a four-dimensional latent signal (`q_signal = 4`),
-`s = 5`, `p_signal = 0.40`, `sigma_xi = 0.20`, anisotropy 8, volume
-multipliers `(0.6, 0.8, 1.0, 1.4, 2.0)`, and generation seed 20009.
+The simulation uses a four-dimensional latent signal (`q_signal = 4`), `s = 5`, `p_signal = 0.40`, `sigma_xi = 0.20`, anisotropy 8, volume multipliers `(0.6, 0.8, 1.0, 1.4, 2.0)`, and generation seed 20009.
 
-The checked-in example output was generated previously with `q = 10` and
-inferred five clusters:
+### Why the example uses four latent dimensions
+
+The values `q_signal = 4` and five ordinal categories arise from different parts of the simulation and should not be conflated. The example contains five true cell clusters. Their latent centers were constructed as the five vertices of a regular simplex so that all pairs of cluster centers were equally distant. A regular simplex with five vertices has affine dimension `5 - 1 = 4`. Therefore, four is the smallest latent dimension in which five equidistant cluster centers can be represented without distortion.
+
+This geometric construction explains the data-generating choice `q_signal = K_true - 1 = 4` for `K_true = 5`. It was used to create five symmetrically separated clusters with the minimum required latent dimension. It does **not** imply that fitting with `q = 4` fixes the estimated number of clusters at five: the MFM sampler still infers the occupied cluster count.
+
+Separately, the continuous methylation values were discretized into five ordinal levels. The manuscript uses five levels as a compromise between a binary methylated/unmethylated representation and overly fine discretization of noisy methylation proportions. This five-level measurement choice is not the mathematical reason for the four-dimensional simplex.
+
+The checked-in example output was generated previously with `q = 10` and inferred five clusters:
 
 ``` text
 metric                         value
@@ -229,9 +227,7 @@ chain_1  chain_2  chain_3  chain_4
 
 The adjusted Rand index compares the estimated labels with the known simulated labels. It is available for this benchmark because `true_label` is known; it cannot generally be calculated for an unlabeled real dataset.
 
-These saved results document that earlier run and are not the output of the
-current `q = 4` default. Re-running `example/run_example.R` with the current R
-interface uses `q = 4` because the script does not explicitly override `q`.
+These saved results document that earlier run and are not the output of the current `q = 4` default. Re-running `example/run_example.R` with the current R interface uses `q = 4` because the script does not explicitly override `q`.
 
 ## Reproduce the complete example
 
@@ -241,10 +237,7 @@ From a terminal in the repository root:
 Rscript example/run_example.R
 ```
 
-With the current interface, this runs four full MCMC chains with `q = 4`, 2,000
-iterations per chain, 5,000 features, and 1,000 cells. It is a substantive
-analysis and may require considerable time and memory. Files are written only
-after a successful run:
+With the current interface, this runs four full MCMC chains with `q = 4`, 2,000 iterations per chain, 5,000 features, and 1,000 cells. It is a substantive analysis and may require considerable time and memory. Files are written only after a successful run:
 
 - `example/example_metrics.csv`: inferred cluster counts and adjusted Rand index;
 - `example/example_cluster_assignments.csv`: cell IDs, simulated truth, and estimated labels;
