@@ -93,7 +93,7 @@ source("function/ordinal_mfm.R")
 example_data <- readRDS("data/example_data_n1000_p5000.rds")
 Y <- example_data$Y
 
-fit <- fit_ordinal_mfm(Y, seed = 123)
+fit <- fit_ordinal_mfm(Y, q = 4, seed = 123)
 result <- summarize_clustering(fit)
 
 head(result$cluster)
@@ -111,7 +111,7 @@ result$posterior_mode_by_chain
 ``` r
 fit <- fit_ordinal_mfm(
   Y,
-  q = 10,
+  q = 4,
   chains = 4,
   n_iter = 2000,
   burn_in = 1000,
@@ -125,7 +125,7 @@ Important arguments are:
 | Argument | Description | Default |
 |----|----|---:|
 | `Y` | Feature-by-cell ordinal matrix with entries in `{1, ..., 5}` | required |
-| `q` | Latent factor dimension; this is **not** the number of clusters | `10` |
+| `q` | Dimension of each cell's latent factor score; this is **not** the number of clusters | `4` |
 | `chains` | Number of independent MCMC chains | `4` |
 | `n_iter` | Total iterations per chain | `2000` |
 | `burn_in` | Initial iterations discarded from each chain | `1000` |
@@ -147,6 +147,34 @@ The return value, `fit`, is an object of class `ordinal_mfm_fit`:
 | `fit$settings` | MCMC settings, hyperparameters, and chain seeds |
 
 Chains are run sequentially to avoid multiplying peak memory use. When `seed = 123` and `chains = 4`, the chain seeds are 123, 124, 125, and 126.
+
+#### What `q` means in the R and C++ code
+
+In the manuscript, `q` is the dimension of the latent factor score
+`eta_j`. Accordingly, the loading matrix has dimensions `p × q`, each cell has
+a `q`-dimensional factor score, and the MFM clusters cells in this
+`q`-dimensional space. The main model-based simulation in the manuscript uses
+`q0 = 4`, and the current R interface therefore defaults to `q = 4`.
+
+The C++ sampler names this same argument `K`, which can be confused with the
+manuscript notation for the number of mixture components. In the implementation,
+however, the C++ argument `K` is used to set the number of columns of the factor
+loading matrix `B` and the number of rows of the factor-score matrix `eta`:
+
+```text
+R interface:       q
+C++ sampler:       K        (the same latent factor dimension)
+Loading matrix:    B        p × q
+Factor scores:     eta      q × n
+Initial clusters:  K_init   initialization only
+Occupied clusters: n_clust  inferred by the MFM sampler
+```
+
+Thus, changing `q` changes the dimension of the latent representation; it does
+not prescribe how many cell clusters the model must return. The argument
+`initial_clusters` is passed to C++ as `K_init` and affects only the starting
+partition. The posterior number of occupied clusters is learned by the MFM
+model and is summarized by `n_clusters` and `posterior_mode_n_clusters`.
 
 ### `summarize_clustering()`
 
@@ -181,9 +209,12 @@ The numeric cluster labels are identifiers only: label 1 is not intrinsically gr
 | `true_label` | Five balanced simulated clusters of 200 cells each           |
 | `metadata`   | Complete data-generation settings                            |
 
-The simulation uses `s = 5`, `p_signal = 0.40`, `sigma_xi = 0.20`, anisotropy 8, volume multipliers `(0.6, 0.8, 1.0, 1.4, 2.0)`, and generation seed 20009.
+The simulation uses a four-dimensional latent signal (`q_signal = 4`),
+`s = 5`, `p_signal = 0.40`, `sigma_xi = 0.20`, anisotropy 8, volume
+multipliers `(0.6, 0.8, 1.0, 1.4, 2.0)`, and generation seed 20009.
 
-The checked-in example run inferred five clusters:
+The checked-in example output was generated previously with `q = 10` and
+inferred five clusters:
 
 ``` text
 metric                         value
@@ -198,6 +229,10 @@ chain_1  chain_2  chain_3  chain_4
 
 The adjusted Rand index compares the estimated labels with the known simulated labels. It is available for this benchmark because `true_label` is known; it cannot generally be calculated for an unlabeled real dataset.
 
+These saved results document that earlier run and are not the output of the
+current `q = 4` default. Re-running `example/run_example.R` with the current R
+interface uses `q = 4` because the script does not explicitly override `q`.
+
 ## Reproduce the complete example
 
 From a terminal in the repository root:
@@ -206,7 +241,10 @@ From a terminal in the repository root:
 Rscript example/run_example.R
 ```
 
-This runs four full MCMC chains of 2,000 iterations each on 5,000 features and 1,000 cells. It is a substantive analysis and may require considerable time and memory. Files are written only after a successful run:
+With the current interface, this runs four full MCMC chains with `q = 4`, 2,000
+iterations per chain, 5,000 features, and 1,000 cells. It is a substantive
+analysis and may require considerable time and memory. Files are written only
+after a successful run:
 
 - `example/example_metrics.csv`: inferred cluster counts and adjusted Rand index;
 - `example/example_cluster_assignments.csv`: cell IDs, simulated truth, and estimated labels;
