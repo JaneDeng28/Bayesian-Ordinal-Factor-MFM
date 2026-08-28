@@ -9,8 +9,8 @@ Posterior samples are summarized using a cell-by-cell co-clustering probability 
 ## Workflow
 
 1.  Prepare a feature-by-cell ordinal methylation matrix with values 1–5, or convert a complete methylation proportion matrix with `methylation_to_ordinal()`.
-2.  Fit the model with `fit_ordinal_mfm()`.
-3.  Summarize the posterior clustering with `summarize_clustering()`.
+2.  Fit the model with `fit_smore()`.
+3.  Summarize the posterior clustering with `summarize_smore()`.
 4.  Inspect the representative labels, posterior cluster count, co-clustering probabilities, and chain-specific diagnostics.
 
 ## Installation
@@ -26,10 +26,10 @@ A working C++ compiler for R is required. `Rcpp` and `RcppArmadillo` are needed 
 Clone or download this repository, start R in the repository root, and load the user-facing functions:
 
 ``` r
-source("function/ordinal_mfm.R")
+source("function/smore.R")
 ```
 
-The C++ sampler is compiled automatically on the first call to `fit_ordinal_mfm()`.
+The C++ sampler is compiled automatically on the first call to `fit_smore()`.
 
 ## Input data
 
@@ -84,7 +84,7 @@ Y <- methylation_to_ordinal(W)
 The conversion uses the intervals `[0, 0.2]`, `(0.2, 0.4]`, `(0.4, 0.6]`, `(0.6, 0.8]`, and `(0.8, 1]`, mapped to categories 1–5. Equivalently, use the convenience wrapper:
 
 ``` r
-fit <- fit_methylation_mfm(W, seed = 123)
+fit <- fit_smore_proportions(W, seed = 123)
 ```
 
 Both `Y` and `W` must be complete: preprocessing and imputation must be performed before calling these functions.
@@ -92,13 +92,13 @@ Both `Y` and `W` must be complete: preprocessing and imputation must be performe
 ## Quick start
 
 ``` r
-source("function/ordinal_mfm.R")
+source("function/smore.R")
 
 example_data <- readRDS("data/example_data_n1000_p5000.rds")
 Y <- example_data$Y
 
-fit <- fit_ordinal_mfm(Y, q = 4, seed = 123)
-result <- summarize_clustering(fit)
+fit <- fit_smore(Y, q = 4, seed = 123)
+result <- summarize_smore(fit)
 
 head(result$cluster)
 result$n_clusters
@@ -110,10 +110,10 @@ result$posterior_mode_by_chain
 
 ## Main functions
 
-### `fit_ordinal_mfm()`
+### `fit_smore()`
 
 ``` r
-fit <- fit_ordinal_mfm(
+fit <- fit_smore(
   Y,
   q = 4,
   chains = 4,
@@ -142,7 +142,7 @@ Important arguments are:
 | `lambda_pois` | Poisson prior mean for the component count minus one | `9` |
 | `seed` | Base random seed; chain `c` uses `seed + c - 1` | `NULL` |
 
-The return value, `fit`, is an object of class `ordinal_mfm_fit`:
+The return value, `fit`, is an object of class `smore_fit`:
 
 | Component | Contents |
 |----|----|
@@ -171,10 +171,10 @@ Thus, changing `q` changes the dimension of the latent representation; it does n
 
 The latent dimension `q` is also separate from the number of ordinal categories in `Y`. Five ordinal categories describe the measurement scale of each matrix entry, whereas `q` describes the dimension of each cell's latent coordinate. There is no general rule that a model with five ordinal levels must use `q = 4`.
 
-### `summarize_clustering()`
+### `summarize_smore()`
 
 ``` r
-result <- summarize_clustering(fit)
+result <- summarize_smore(fit)
 ```
 
 This function combines all retained allocation draws, calculates the posterior similarity matrix, and selects Dahl's least-squares representative partition. It returns:
@@ -192,6 +192,12 @@ This function combines all retained allocation draws, calculates the posterior s
 | `selected_draw` | 1 | Index of the allocation draw selected by Dahl's criterion |
 
 The numeric cluster labels are identifiers only: label 1 is not intrinsically greater than label 2. For scientific interpretation, investigate the methylation profiles of the cells assigned to each cluster. Large differences in `posterior_mode_by_chain` or unstable cluster-count traces should be examined before interpreting the representative partition.
+
+## Backward compatibility
+
+Earlier versions exposed the descriptive function names `fit_ordinal_mfm()`, `summarize_clustering()`, and `fit_methylation_mfm()`. These functions remain available after sourcing `function/smore.R`, so existing scripts continue to run. New analyses should use `fit_smore()`, `summarize_smore()`, and `fit_smore_proportions()`.
+
+Objects returned by `fit_smore()` inherit from both `smore_fit` and the legacy `ordinal_mfm_fit` class. This allows the new interface to work with the existing posterior summarization code without breaking older class checks.
 
 ## Included example data and output
 
@@ -249,7 +255,8 @@ With the current interface, this runs four full MCMC chains with `q = 4`, 2,000 
 
 ``` text
 function/
-  ordinal_mfm.R       User-facing R functions
+  smore.R             Public SMORE interface
+  ordinal_mfm.R       Statistical implementation and legacy API
   mcmc.cpp            C++ MCMC implementation
 
 data/

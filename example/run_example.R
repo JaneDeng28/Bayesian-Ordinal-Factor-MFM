@@ -18,8 +18,8 @@ script_file <- sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value = 
 project_dir <- normalizePath(file.path(dirname(normalizePath(script_file)), ".."))
 
 # Load the public R functions. The C++ backend compiles automatically at the
-# first fit_ordinal_mfm() call in a new R session.
-source(file.path(project_dir, "function", "ordinal_mfm.R"))
+# first fit_smore() call in a new R session.
+source(file.path(project_dir, "function", "smore.R"))
 
 # The RDS object contains:
 #   Y          5,000 x 1,000 ordinal input matrix (values 1,...,5)
@@ -33,15 +33,15 @@ example_data <- readRDS(file.path(
 Y <- example_data$Y
 
 # Paper defaults are used automatically:
-# q = 10, chains = 4, n_iter = 2000, burn_in = 1000,
+# q = 4, chains = 4, n_iter = 2000, burn_in = 1000,
 # initial_clusters = 10, sigma_B = 5, alpha_mfm = 1,
 # max_clusters = 40, kappa0 = 0.1, nu0 = q + 2, lambda_pois = 9.
 # Consecutive chain seeds are 20260820, 20260821, 20260822, and 20260823.
-fit <- fit_ordinal_mfm(Y, seed = 20260820, project_dir = project_dir)
+fit <- fit_smore(Y, seed = 20260820, project_dir = project_dir)
 
 # Combine retained allocation draws from all chains, build the posterior
 # similarity matrix, and select Dahl's least-squares representative partition.
-clustering <- summarize_clustering(fit)
+clustering <- summarize_smore(fit)
 
 # ARI is available here because simulated truth is included with the example.
 ari <- mclust::adjustedRandIndex(example_data$true_label, clustering$cluster)
