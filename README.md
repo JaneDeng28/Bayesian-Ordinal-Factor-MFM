@@ -1,8 +1,10 @@
-# Bayesian Ordinal Factor MFM Clustering
+# SMORE: Single-cell MethylOme Reduction and Embedding
 
-This repository implements the method described in **“Bayesian Ordinal Factor Mixture of Finite Mixtures Modeling for Single-Cell DNA Methylation Clustering.”** It clusters cells from high-dimensional ordinal methylation data while learning the number of occupied clusters rather than requiring it as an input.
+This repository provides the R and C++ implementation of **SMORE** (**S**ingle-cell **M**ethyl**O**me **R**eduction and **E**mbedding), a Bayesian framework for identifying cell populations from single-cell DNA methylation data. SMORE analyzes a preprocessed ordinal methylation matrix, with genomic regions represented by rows and individual cells by columns, and jointly learns a low-dimensional representation, cell-population assignments, and the number of occupied populations.
 
-The model combines an ordinal latent-factor representation with a mixture of finite mixtures (MFM) prior. The factor model reduces the dimension of the methylation features, and the MFM prior performs model-based clustering in the latent space. Posterior allocation samples from multiple MCMC chains are combined into a posterior similarity matrix, and Dahl's least-squares partition provides one representative clustering.
+SMORE links observed methylation states to latent continuous variables through an ordinal probit model. A low-rank factor model captures coordinated methylation variation across genomic regions, while a mixture-of-finite-mixtures (MFM) prior clusters cells through their latent factor scores. Because the observation model, latent representation, and clustering structure are estimated jointly, uncertainty can propagate throughout the analysis rather than being separated across independent dimension-reduction and clustering steps.
+
+Posterior samples are summarized using a cell-by-cell co-clustering probability matrix and Dahl's least-squares representative partition. The resulting output includes representative cell labels, posterior inference on the number of occupied populations, pairwise clustering uncertainty, and chain-specific diagnostic summaries.
 
 ## Workflow
 
